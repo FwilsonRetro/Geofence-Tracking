@@ -7,4 +7,8 @@ export class GeofenceBackgroundTrackingWeb extends WebPlugin implements Geofence
     console.log('ECHO', options);
     return options;
   }
+
+  async initializeGeofences(): Promise<void> {
+
+  }
 }
