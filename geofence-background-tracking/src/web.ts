@@ -1,4 +1,4 @@
-import { WebPlugin } from '@capacitor/core';
+import { registerPlugin, WebPlugin } from '@capacitor/core';
 
 import type { GeofenceBackgroundTrackingPlugin } from './definitions';
 
@@ -12,3 +12,10 @@ export class GeofenceBackgroundTrackingWeb extends WebPlugin implements Geofence
 
   }
 }
+
+const GeofenceBackgroundTrackingPlugin = new GeofenceBackgroundTrackingWeb();
+
+export { GeofenceBackgroundTrackingPlugin };
+
+import { RegisterPlugin } from '@capacitor/core/types/definitions';
+registerPlugin('GeofenceBackgroundTrackingPlugin');
