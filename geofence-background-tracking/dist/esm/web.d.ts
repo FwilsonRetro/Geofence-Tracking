@@ -6,4 +6,7 @@ export declare class GeofenceBackgroundTrackingWeb extends WebPlugin implements 
     }): Promise<{
         value: string;
     }>;
+    initializeGeofences(): Promise<void>;
 }
+declare const GeofenceBackgroundTrackingPlugin: GeofenceBackgroundTrackingWeb;
+export { GeofenceBackgroundTrackingPlugin };

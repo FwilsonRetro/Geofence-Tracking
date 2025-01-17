@@ -11,7 +11,11 @@ class GeofenceBackgroundTrackingWeb extends core.WebPlugin {
         console.log('ECHO', options);
         return options;
     }
+    async initializeGeofences() {
+        console.log('This is a web fallback, no geofencing support on web.');
+    }
 }
+new GeofenceBackgroundTrackingWeb();
 
 var web = /*#__PURE__*/Object.freeze({
     __proto__: null,

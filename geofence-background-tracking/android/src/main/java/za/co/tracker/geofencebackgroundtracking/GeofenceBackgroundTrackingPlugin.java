@@ -13,6 +13,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.util.Log;
 
+
 import androidx.core.app.ActivityCompat;
 
 import com.getcapacitor.JSObject;
@@ -30,18 +31,69 @@ import com.google.android.gms.location.GeofencingClient;
 import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationServices;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.util.Objects;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
 @CapacitorPlugin(name = "GeofenceBackgroundTracking", permissions = {
         @Permission(alias = "location", strings = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}),
         @Permission(alias = "backgroundLocation", strings = {Manifest.permission.ACCESS_BACKGROUND_LOCATION})
 })
 public class GeofenceBackgroundTrackingPlugin extends Plugin {
+    private String apiURL;
+    private static final OkHttpClient client = new OkHttpClient();
+
+    @Override
+    public void load(){
+        super.load();
+        apiURL =  getConfig().getString("payloadURL", null);
+    }
+
 
     private static GeofencingClient getGeofencingClient(Context context) {
         return LocationServices.getGeofencingClient(context.getApplicationContext());
     }
 
+    public void sendPostRequest(String urlString, String jsonBody) {
+
+        try{
+            new Thread(() -> {
+                RequestBody body = RequestBody.create(
+                        jsonBody,
+                        MediaType.get("application/json; charset=utf-8")
+                );
+                Request request = new Request.Builder()
+                        .url(urlString)
+                        .post(body)
+                        .addHeader("Content-Type", "application/json")  // Set Content-Type header
+                        .build();
+                try (Response response = client.newCall(request).execute()) {
+                    if (!response.isSuccessful()) {
+                        throw new IOException("Unexpected code " + response);
+                    }
+                    response.body().string();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
     @PluginMethod
-    public void initializeGeofencing(PluginCall call) {
+    public void initializeGeofences(PluginCall call) {
         getBridge().saveCall(call);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -124,6 +176,23 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
             if (location != null) {
                 double latitude = location.getLatitude();
                 double longitude = location.getLongitude();
+                JSONObject locationPoints = new JSONObject();
+                JSONObject jsonBody = new JSONObject();
+                try {
+                    locationPoints.put("latitude", latitude);
+                    locationPoints.put("longitude", longitude);
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+                try {
+                    jsonBody.put("id", 3);
+                    jsonBody.put("location", locationPoints);
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+
+
+                sendPostRequest(apiURL,jsonBody.toString());
 
                 Log.i("GeofencingPlugin", "Fetched location: " + latitude + ", " + longitude);
                 Log.e("GeofencingPlugin", "Location Permission State: " + getPermissionState("location"));
@@ -178,5 +247,6 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
                         Log.e("GeofencingPlugin", "Error code: " + apiException.getStatusCode());
                     }
                 });
+
     }
 }

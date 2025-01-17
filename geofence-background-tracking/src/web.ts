@@ -1,4 +1,4 @@
-import { registerPlugin, WebPlugin } from '@capacitor/core';
+import { WebPlugin } from '@capacitor/core';
 
 import type { GeofenceBackgroundTrackingPlugin } from './definitions';
 
@@ -9,13 +9,10 @@ export class GeofenceBackgroundTrackingWeb extends WebPlugin implements Geofence
   }
 
   async initializeGeofences(): Promise<void> {
-
+    console.log('This is a web fallback, no geofencing support on web.');
   }
 }
 
 const GeofenceBackgroundTrackingPlugin = new GeofenceBackgroundTrackingWeb();
 
 export { GeofenceBackgroundTrackingPlugin };
-
-import { RegisterPlugin } from '@capacitor/core/types/definitions';
-registerPlugin('GeofenceBackgroundTrackingPlugin');

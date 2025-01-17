@@ -4,5 +4,9 @@ export class GeofenceBackgroundTrackingWeb extends WebPlugin {
         console.log('ECHO', options);
         return options;
     }
+    async initializeGeofences() {
+        console.log('This is a web fallback, no geofencing support on web.');
+    }
 }
+const GeofenceBackgroundTrackingPlugin = new GeofenceBackgroundTrackingWeb();
 //# sourceMappingURL=web.js.map

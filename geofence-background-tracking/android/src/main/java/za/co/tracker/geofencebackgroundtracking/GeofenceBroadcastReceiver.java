@@ -1,9 +1,6 @@
-package za.co.tracker.backgroundgeofencetracking;
+package za.co.tracker.geofencebackgroundtracking;
 
-import android.app.job.JobInfo;
-import android.app.job.JobScheduler;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.PersistableBundle;
@@ -41,7 +38,7 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
             Log.i("GeofenceReceiver", "Geofence exited.");
             double latitude = geofencingEvent.getTriggeringLocation().getLatitude();
             double longitude = geofencingEvent.getTriggeringLocation().getLongitude();
-            BackgroundGeofenceTrackingPlugin.createGeofence(latitude,longitude, context);
+            GeofenceBackgroundTrackingPlugin.createGeofence(latitude,longitude, context);
         } else {
             Log.e("GeofenceReceiver", "Unknown geofence transition: " + geofenceTransition);
         }
@@ -53,4 +50,3 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
         return bundle;
     }
 }
-
