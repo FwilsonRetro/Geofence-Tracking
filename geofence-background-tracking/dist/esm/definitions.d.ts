@@ -4,4 +4,5 @@ export interface GeofenceBackgroundTrackingPlugin {
     }): Promise<{
         value: string;
     }>;
+    initializeGeofences(): Promise<void>;
 }
