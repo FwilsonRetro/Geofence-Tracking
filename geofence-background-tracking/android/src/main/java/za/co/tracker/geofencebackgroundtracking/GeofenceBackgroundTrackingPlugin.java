@@ -10,7 +10,10 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
+import android.os.PowerManager;
+import android.provider.Settings;
 import android.util.Log;
 
 
@@ -166,6 +169,7 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
     @SuppressLint("MissingPermission")
     public void fetchCurrentLocationAndSetupGeofence(PluginCall call) {
         FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(getContext());
+        PowerManager powerManager = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
 
         if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             call.reject("Location permission not granted.");
@@ -203,7 +207,16 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
                         || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
                         && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
                     call.reject("Required location permissions are not granted.");
-                }else {
+                }else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if(!powerManager.isIgnoringBatteryOptimizations(getContext().getPackageName())){
+                        Intent batteryIntent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                        batteryIntent.setData(Uri.parse("package:" + getContext().getPackageName()));
+                        getContext().startActivity(batteryIntent);
+                    } else{
+                        createGeofence(latitude, longitude,getContext());
+                        call.resolve(new JSObject().put("message", "Geofencing initialized at: " + latitude + ", " + longitude));
+                    }
+                }else{
                     createGeofence(latitude, longitude,getContext());
                     call.resolve(new JSObject().put("message", "Geofencing initialized at: " + latitude + ", " + longitude));
                 }
