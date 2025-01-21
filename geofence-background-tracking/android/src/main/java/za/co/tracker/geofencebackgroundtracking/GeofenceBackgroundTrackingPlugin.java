@@ -18,6 +18,7 @@ import android.util.Log;
 
 
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
@@ -28,16 +29,26 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import com.getcapacitor.annotation.Permission;
 import com.getcapacitor.annotation.PermissionCallback;
 import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.location.ActivityRecognition;
+import com.google.android.gms.location.ActivityRecognitionClient;
+import com.google.android.gms.location.ActivityTransition;
+import com.google.android.gms.location.ActivityTransitionRequest;
+import com.google.android.gms.location.DetectedActivity;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingClient;
 import com.google.android.gms.location.GeofencingRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 import okhttp3.Call;
@@ -176,6 +187,12 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
             return;
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            if (ContextCompat.checkSelfPermission(this.getContext(), Manifest.permission.ACTIVITY_RECOGNITION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this.getActivity(), new String[]{Manifest.permission.ACTIVITY_RECOGNITION}, 1);
+            }
+        }
+
         fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
             if (location != null) {
                 double latitude = location.getLatitude();
@@ -198,11 +215,6 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
 
                 sendPostRequest(apiURL,jsonBody.toString());
 
-                Log.i("GeofencingPlugin", "Fetched location: " + latitude + ", " + longitude);
-                Log.e("GeofencingPlugin", "Location Permission State: " + getPermissionState("location"));
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    Log.e("GeofencingPlugin", "Background Location Permission State: " + getPermissionState("backgroundLocation"));
-                }
                 if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                         || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
                         && ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED)) {
@@ -213,11 +225,11 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
                         batteryIntent.setData(Uri.parse("package:" + getContext().getPackageName()));
                         getContext().startActivity(batteryIntent);
                     } else{
-                        createGeofence(latitude, longitude,getContext());
+                        createGeofence(getContext());
                         call.resolve(new JSObject().put("message", "Geofencing initialized at: " + latitude + ", " + longitude));
                     }
                 }else{
-                    createGeofence(latitude, longitude,getContext());
+                    createGeofence(getContext());
                     call.resolve(new JSObject().put("message", "Geofencing initialized at: " + latitude + ", " + longitude));
                 }
             } else {
@@ -229,37 +241,46 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
     }
 
     @SuppressLint("MissingPermission")
-    public static void createGeofence(double latitude, double longitude, Context context) {
-        GeofencingClient geofencingClient = getGeofencingClient(context);
-        Geofence geofence = new Geofence.Builder()
-                .setRequestId("InitialGeofence")
-                .setCircularRegion(latitude, longitude, 100.0f)
-                .setExpirationDuration(Geofence.NEVER_EXPIRE)
-                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_EXIT)
-                .build();
-
-        GeofencingRequest geofencingRequest = new GeofencingRequest.Builder()
-                .addGeofence(geofence)
-                .build();
-
-            Intent intent = new Intent(context, GeofenceBroadcastReceiver.class);
-
-        PendingIntent geofencePendingIntent;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                geofencePendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-            } else {
-                geofencePendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+    public static void createGeofence( Context context) {
+        
+//        GeofencingClient geofencingClient = getGeofencingClient(context);
+//        Geofence geofence = new Geofence.Builder()
+//                .setRequestId("InitialGeofence")
+//                .setCircularRegion(latitude, longitude, 100.0f)
+//                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+//                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_EXIT)
+//                .build();
+//
+//        GeofencingRequest geofencingRequest = new GeofencingRequest.Builder()
+//                .addGeofence(geofence)
+//                .build();
+//
+//            Intent intent = new Intent(context, GeofenceBroadcastReceiver.class);
+//
+//        PendingIntent geofencePendingIntent;
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+//                geofencePendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+//            } else {
+//                geofencePendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+//        }
+//
+//
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//
+//        }
+//
+//       geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent)
+//                .addOnSuccessListener(aVoid -> Log.i("GeofencingPlugin", "Geofence added successfully."))
+//                .addOnFailureListener(e -> {
+//                    Log.e("GeofencingPlugin", "Failed to add geofence: " + e.getMessage());
+//                    if (e instanceof ApiException) {
+//                        ApiException apiException = (ApiException) e;
+//                        Log.e("GeofencingPlugin", "Error code: " + apiException.getStatusCode());
+//                    }
+//                });
+        Intent serviceIntent = new Intent(context, GeofenceForegroundService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent);
         }
-
-       geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent)
-                .addOnSuccessListener(aVoid -> Log.i("GeofencingPlugin", "Geofence added successfully."))
-                .addOnFailureListener(e -> {
-                    Log.e("GeofencingPlugin", "Failed to add geofence: " + e.getMessage());
-                    if (e instanceof ApiException) {
-                        ApiException apiException = (ApiException) e;
-                        Log.e("GeofencingPlugin", "Error code: " + apiException.getStatusCode());
-                    }
-                });
-
     }
 }
