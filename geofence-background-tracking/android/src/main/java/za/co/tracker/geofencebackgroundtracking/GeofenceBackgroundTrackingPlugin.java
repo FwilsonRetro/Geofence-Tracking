@@ -63,6 +63,8 @@ import okhttp3.Response;
         @Permission(alias = "location", strings = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}),
         @Permission(alias = "backgroundLocation", strings = {Manifest.permission.ACCESS_BACKGROUND_LOCATION})
 })
+
+//PERMISSION HANDLER
 public class GeofenceBackgroundTrackingPlugin extends Plugin {
     private String apiURL;
     private static final OkHttpClient client = new OkHttpClient();
@@ -181,6 +183,8 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
     public void fetchCurrentLocationAndSetupGeofence(PluginCall call) {
         FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(getContext());
         PowerManager powerManager = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+        @SuppressLint("InvalidWakeLockTag") PowerManager.WakeLock wl = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NEW WAKE LOCK");
+        wl.acquire(10*60*1000L /*10 minutes*/); //TODO: Needs to be changed to 15 minutes, worker needs to be added to restart foreground service every 15 minutes
 
         if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             call.reject("Location permission not granted.");
@@ -213,7 +217,7 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
                 }
 
 
-                sendPostRequest(apiURL,jsonBody.toString());
+                //sendPostRequest(apiURL,jsonBody.toString());
 
                 if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                         || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q

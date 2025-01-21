@@ -31,6 +31,7 @@ import com.google.android.gms.location.DetectedActivity;
 import java.util.ArrayList;
 import java.util.List;
 
+//ACTUAL WORK/REGISTERING INTENT
 public class GeofenceForegroundService extends Service {
 
     private static final String CHANNEL_ID = "GeofenceServiceChannel";
@@ -50,6 +51,7 @@ public class GeofenceForegroundService extends Service {
         createNotificationChannel();
 
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setPriority(Notification.PRIORITY_MIN)
                 .setContentTitle("Location Service")
                 .build();
         startForeground(1, notification);
@@ -74,7 +76,7 @@ public class GeofenceForegroundService extends Service {
             serviceChannel = new NotificationChannel(
                     CHANNEL_ID,
                     "Location Service Channel",
-                    NotificationManager.IMPORTANCE_DEFAULT
+                    NotificationManager.IMPORTANCE_UNSPECIFIED
             );
         }
 

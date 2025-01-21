@@ -3,6 +3,7 @@ package za.co.tracker.geofencebackgroundtracking;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.util.Log;
 
 import com.google.android.gms.location.ActivityTransition;
@@ -12,7 +13,9 @@ import com.google.android.gms.location.DetectedActivity;
 
 import java.util.List;
 
+//TRACKING LOGIC/API CALL HERE PROBABLY
 public class ActivityTransitionReceiver extends BroadcastReceiver {
+
     @Override
     public void onReceive(Context context, Intent intent) {
         ActivityTransitionResult result = ActivityTransitionResult.extractResult(intent);
@@ -27,6 +30,24 @@ public class ActivityTransitionReceiver extends BroadcastReceiver {
                 String transitionName = getTransitionName(transitionType);
 
                 Log.d("TAG", "Activity: " + activityName + ", Transition: " + transitionName);
+
+                //Stops service
+//                if (activityType == DetectedActivity.WALKING &&
+//                        transitionType == ActivityTransition.ACTIVITY_TRANSITION_EXIT) {
+//                    Intent stopServiceIntent = new Intent(context, GeofenceForegroundService.class);
+//                    context.stopService(stopServiceIntent);
+                    //Log.d("TAG", "Foreground service stopped after walking exited.");
+                //}
+
+//                //Restarts service
+//                if (activityType == DetectedActivity.WALKING &&
+//                        transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
+//                    Intent startServiceIntent = new Intent(context, GeofenceForegroundService.class);
+//                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                        context.startForegroundService(startServiceIntent);
+//                    }
+//                    Log.d("TAG", "Foreground service restarted on walking entered.");
+//                }
             }
         }
 
