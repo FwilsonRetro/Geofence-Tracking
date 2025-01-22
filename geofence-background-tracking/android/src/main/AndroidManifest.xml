@@ -24,7 +24,7 @@
         <service
             android:name=".GeofenceForegroundService"
             android:foregroundServiceType="location"
-            android:exported="false">
+            android:exported="true">
         </service>
 
     </application>

@@ -6,12 +6,17 @@ import android.content.Intent;
 import android.os.Build;
 import android.util.Log;
 
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+
 import com.google.android.gms.location.ActivityTransition;
 import com.google.android.gms.location.ActivityTransitionEvent;
 import com.google.android.gms.location.ActivityTransitionResult;
 import com.google.android.gms.location.DetectedActivity;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 //TRACKING LOGIC/API CALL HERE PROBABLY
 public class ActivityTransitionReceiver extends BroadcastReceiver {
@@ -32,22 +37,23 @@ public class ActivityTransitionReceiver extends BroadcastReceiver {
                 Log.d("TAG", "Activity: " + activityName + ", Transition: " + transitionName);
 
                 //Stops service
-//                if (activityType == DetectedActivity.WALKING &&
-//                        transitionType == ActivityTransition.ACTIVITY_TRANSITION_EXIT) {
-//                    Intent stopServiceIntent = new Intent(context, GeofenceForegroundService.class);
-//                    context.stopService(stopServiceIntent);
-                    //Log.d("TAG", "Foreground service stopped after walking exited.");
-                //}
+                if (activityType == DetectedActivity.WALKING &&
+                        transitionType == ActivityTransition.ACTIVITY_TRANSITION_EXIT) {
+                    Intent stopServiceIntent = new Intent(context, GeofenceForegroundService.class);
+                    context.stopService(stopServiceIntent);
 
-//                //Restarts service
-//                if (activityType == DetectedActivity.WALKING &&
-//                        transitionType == ActivityTransition.ACTIVITY_TRANSITION_ENTER) {
-//                    Intent startServiceIntent = new Intent(context, GeofenceForegroundService.class);
-//                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//                        context.startForegroundService(startServiceIntent);
-//                    }
-//                    Log.d("TAG", "Foreground service restarted on walking entered.");
-//                }
+                    PeriodicWorkRequest workRequest = new PeriodicWorkRequest.Builder(
+                            GeofenceServiceWorker.class,
+                            15, TimeUnit.MINUTES
+                    ).build();
+
+                    WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                            "GeofenceServiceWorker",
+                            ExistingPeriodicWorkPolicy.UPDATE,
+                            workRequest
+                    );
+                    Log.d("TAG", "Foreground service stopped after walking exited.");
+                }
             }
         }
 

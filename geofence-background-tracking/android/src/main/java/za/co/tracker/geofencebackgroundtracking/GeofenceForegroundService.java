@@ -20,6 +20,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
+import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityRecognitionClient;
 import com.google.android.gms.location.ActivityTransition;
@@ -27,34 +28,49 @@ import com.google.android.gms.location.ActivityTransitionEvent;
 import com.google.android.gms.location.ActivityTransitionRequest;
 import com.google.android.gms.location.ActivityTransitionResult;
 import com.google.android.gms.location.DetectedActivity;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.Geofence;
+import com.google.android.gms.location.GeofencingClient;
+import com.google.android.gms.location.GeofencingRequest;
+import com.google.android.gms.location.LocationServices;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 //ACTUAL WORK/REGISTERING INTENT
 public class GeofenceForegroundService extends Service {
 
     private static final String CHANNEL_ID = "GeofenceServiceChannel";
-    private ActivityTransitionReceiver activityTransitionReceiver;
 
     @Override
     public void onCreate() {
         super.onCreate();
         Log.d("LocationService", "Service created");
-        activityTransitionReceiver = new ActivityTransitionReceiver();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.e("FOREGROUND", "Foreground started");
         Context context = getApplicationContext();
-        registerActivityIntent(context);
-        createNotificationChannel();
-
-        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setPriority(Notification.PRIORITY_MIN)
-                .setContentTitle("Location Service")
-                .build();
-        startForeground(1, notification);
+        double latitude = intent.getDoubleExtra("latitude",0.0);
+        double longitude = intent.getDoubleExtra("longitude",0.0);
+            registerGeofenceIntent(context,latitude,longitude);
+            createNotificationChannel();
+            Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                    .setPriority(Notification.PRIORITY_MIN)
+                    .setContentTitle("Location Service")
+                    .build();
+            startForeground(1, notification);
         return START_STICKY;
     }
 
@@ -91,33 +107,45 @@ public class GeofenceForegroundService extends Service {
         }
     }
 
+    private static GeofencingClient getGeofencingClient(Context context) {
+        return LocationServices.getGeofencingClient(context.getApplicationContext());
+    }
+
     @SuppressLint("MissingPermission")
-    private void registerActivityIntent(Context context){
-        ActivityRecognitionClient activityRecognitionClient = ActivityRecognition.getClient(context);
-        List<ActivityTransition> transitions = new ArrayList<>();
-        transitions.add(new ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.WALKING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build());
-        transitions.add(new ActivityTransition.Builder()
-                .setActivityType(DetectedActivity.WALKING)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
-                .build());
-        ActivityTransitionRequest request = new ActivityTransitionRequest(transitions);
+    private void registerGeofenceIntent(Context context,double latitude,double longitude){
 
-        Intent intent = new Intent(context, ActivityTransitionReceiver.class);
-        PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                context,
-                0,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
-        );
+        GeofencingClient geofencingClient = getGeofencingClient(context);
 
-        activityRecognitionClient
-                .requestActivityTransitionUpdates(request, pendingIntent)
-                .addOnSuccessListener(aVoid -> Log.i("ACtivity Transition", "Activity Registered successfully "))
-                .addOnFailureListener(e -> Log.i("ACtivity Transition", "Activity registration failed "));
+        Geofence geofence = new Geofence.Builder()
+                .setRequestId("InitialGeofence")
+                .setCircularRegion(latitude, longitude, 10.0f)
+                .setExpirationDuration(Geofence.NEVER_EXPIRE)
+                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_EXIT)
+                .build();
 
+        GeofencingRequest geofencingRequest = new GeofencingRequest.Builder()
+                .addGeofence(geofence)
+                .build();
+
+        Intent intent = new Intent(context, GeofenceBroadcastReceiver.class);
+
+        PendingIntent geofencePendingIntent;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            geofencePendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
+        } else {
+            geofencePendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        }
+
+        geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent)
+                .addOnSuccessListener(aVoid -> Log.i("GeofencingPlugin", "Geofence added successfully."))
+                .addOnFailureListener(e -> {
+                    Log.e("GeofencingPlugin", "Failed to add geofence: " + e.getMessage());
+                    if (e instanceof ApiException) {
+                        ApiException apiException = (ApiException) e;
+                        Log.e("GeofencingPlugin", "Error code: " + apiException.getStatusCode());
+                    }
+                });
         sendBroadcast(intent);
+
     }
 }

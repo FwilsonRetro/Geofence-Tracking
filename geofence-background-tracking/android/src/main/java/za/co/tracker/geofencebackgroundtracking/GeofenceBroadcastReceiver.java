@@ -6,8 +6,14 @@ import android.content.Intent;
 import android.os.PersistableBundle;
 import android.util.Log;
 
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
+
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingEvent;
+
+import java.util.concurrent.TimeUnit;
 
 public class GeofenceBroadcastReceiver extends BroadcastReceiver {
     @Override
@@ -35,7 +41,8 @@ public class GeofenceBroadcastReceiver extends BroadcastReceiver {
             Log.i("GeofenceReceiver", "Geofence exited.");
             double latitude = geofencingEvent.getTriggeringLocation().getLatitude();
             double longitude = geofencingEvent.getTriggeringLocation().getLongitude();
-            //GeofenceBackgroundTrackingPlugin.createGeofence(latitude,longitude, context);
+            GeofenceBackgroundTrackingPlugin.createGeofence(context,latitude,longitude);
+            Log.d("TAG", "Foreground service stopped after walking exited.");
         } else {
             Log.e("GeofenceReceiver", "Unknown geofence transition: " + geofenceTransition);
         }

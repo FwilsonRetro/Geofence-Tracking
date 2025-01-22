@@ -19,6 +19,9 @@ import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.work.ExistingPeriodicWorkPolicy;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
@@ -50,6 +53,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -73,39 +77,6 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
     public void load(){
         super.load();
         apiURL =  getConfig().getString("payloadURL", null);
-    }
-
-
-    private static GeofencingClient getGeofencingClient(Context context) {
-        return LocationServices.getGeofencingClient(context.getApplicationContext());
-    }
-
-    public void sendPostRequest(String urlString, String jsonBody) {
-
-        try{
-            new Thread(() -> {
-                RequestBody body = RequestBody.create(
-                        jsonBody,
-                        MediaType.get("application/json; charset=utf-8")
-                );
-                Request request = new Request.Builder()
-                        .url(urlString)
-                        .post(body)
-                        .addHeader("Content-Type", "application/json")  // Set Content-Type header
-                        .build();
-                try (Response response = client.newCall(request).execute()) {
-                    if (!response.isSuccessful()) {
-                        throw new IOException("Unexpected code " + response);
-                    }
-                    response.body().string();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }).start();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
     }
 
     @PluginMethod
@@ -181,10 +152,10 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
 
     @SuppressLint("MissingPermission")
     public void fetchCurrentLocationAndSetupGeofence(PluginCall call) {
-        FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(getContext());
+
         PowerManager powerManager = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
         @SuppressLint("InvalidWakeLockTag") PowerManager.WakeLock wl = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NEW WAKE LOCK");
-        wl.acquire(10*60*1000L /*10 minutes*/); //TODO: Needs to be changed to 15 minutes, worker needs to be added to restart foreground service every 15 minutes
+        wl.acquire(15*60*1000L /*15 minutes*/);
 
         if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             call.reject("Location permission not granted.");
@@ -197,6 +168,7 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
             }
         }
 
+        FusedLocationProviderClient fusedLocationClient = LocationServices.getFusedLocationProviderClient(getContext());
         fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
             if (location != null) {
                 double latitude = location.getLatitude();
@@ -217,7 +189,7 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
                 }
 
 
-                //sendPostRequest(apiURL,jsonBody.toString());
+                sendPostRequest(apiURL,jsonBody.toString());
 
                 if (ActivityCompat.checkSelfPermission(getContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                         || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
@@ -229,60 +201,52 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
                         batteryIntent.setData(Uri.parse("package:" + getContext().getPackageName()));
                         getContext().startActivity(batteryIntent);
                     } else{
-                        createGeofence(getContext());
-                        call.resolve(new JSObject().put("message", "Geofencing initialized at: " + latitude + ", " + longitude));
+                        createGeofence(getContext(),latitude,longitude);
+                        call.resolve();
                     }
                 }else{
-                    createGeofence(getContext());
-                    call.resolve(new JSObject().put("message", "Geofencing initialized at: " + latitude + ", " + longitude));
+                    createGeofence(getContext(),latitude,longitude);
+                    call.resolve();
                 }
-            } else {
-                call.reject("Unable to fetch location. Ensure GPS is enabled.");
             }
-        }).addOnFailureListener(e -> {
-            call.reject("Error fetching location: " + e.getMessage());
         });
+
+    }
+
+    public void sendPostRequest(String urlString, String jsonBody) {
+
+        try{
+            new Thread(() -> {
+                RequestBody body = RequestBody.create(
+                        jsonBody,
+                        MediaType.get("application/json; charset=utf-8")
+                );
+                Request request = new Request.Builder()
+                        .url(urlString)
+                        .post(body)
+                        .addHeader("Content-Type", "application/json")  // Set Content-Type header
+                        .build();
+                try (Response response = client.newCall(request).execute()) {
+                    if (!response.isSuccessful()) {
+                        throw new IOException("Unexpected code " + response);
+                    }
+                    response.body().string();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
     @SuppressLint("MissingPermission")
-    public static void createGeofence( Context context) {
-        
-//        GeofencingClient geofencingClient = getGeofencingClient(context);
-//        Geofence geofence = new Geofence.Builder()
-//                .setRequestId("InitialGeofence")
-//                .setCircularRegion(latitude, longitude, 100.0f)
-//                .setExpirationDuration(Geofence.NEVER_EXPIRE)
-//                .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_EXIT)
-//                .build();
-//
-//        GeofencingRequest geofencingRequest = new GeofencingRequest.Builder()
-//                .addGeofence(geofence)
-//                .build();
-//
-//            Intent intent = new Intent(context, GeofenceBroadcastReceiver.class);
-//
-//        PendingIntent geofencePendingIntent;
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-//                geofencePendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE);
-//            } else {
-//                geofencePendingIntent = PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-//        }
-//
-//
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-//
-//        }
-//
-//       geofencingClient.addGeofences(geofencingRequest, geofencePendingIntent)
-//                .addOnSuccessListener(aVoid -> Log.i("GeofencingPlugin", "Geofence added successfully."))
-//                .addOnFailureListener(e -> {
-//                    Log.e("GeofencingPlugin", "Failed to add geofence: " + e.getMessage());
-//                    if (e instanceof ApiException) {
-//                        ApiException apiException = (ApiException) e;
-//                        Log.e("GeofencingPlugin", "Error code: " + apiException.getStatusCode());
-//                    }
-//                });
+    public static void createGeofence(Context context,double latitude,double longitude) {
+
         Intent serviceIntent = new Intent(context, GeofenceForegroundService.class);
+        serviceIntent.putExtra("latitude",latitude);
+        serviceIntent.putExtra("longitude",longitude);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(serviceIntent);
         }

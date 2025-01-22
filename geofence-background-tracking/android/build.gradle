@@ -59,4 +59,5 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation 'com.squareup.okhttp3:okhttp:4.11.0'
+    implementation "androidx.work:work-runtime:2.10.0"
 }
