@@ -15,6 +15,8 @@ npx cap sync
 
 * [`echo(...)`](#echo)
 * [`initializeGeofences()`](#initializegeofences)
+* [`addListener('perissionCheck', ...)`](#addlistenerperissioncheck-)
+* [Interfaces](#interfaces)
 
 </docgen-index>
 
@@ -43,5 +45,31 @@ initializeGeofences() => Promise<void>
 ```
 
 --------------------
+
+
+### addListener('perissionCheck', ...)
+
+```typescript
+addListener(eventName: 'perissionCheck', listenerFunc: (data: { latitude: number; longitude: number; identifier: string; }) => void) => Promise<PluginListenerHandle>
+```
+
+| Param              | Type                                                                                         |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| **`eventName`**    | <code>'perissionCheck'</code>                                                                |
+| **`listenerFunc`** | <code>(data: { latitude: number; longitude: number; identifier: string; }) =&gt; void</code> |
+
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
+
+--------------------
+
+
+### Interfaces
+
+
+#### PluginListenerHandle
+
+| Prop         | Type                                      |
+| ------------ | ----------------------------------------- |
+| **`remove`** | <code>() =&gt; Promise&lt;void&gt;</code> |
 
 </docgen-api>

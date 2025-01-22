@@ -30,11 +30,51 @@
         "docs": "",
         "complexTypes": [],
         "slug": "initializegeofences"
+      },
+      {
+        "name": "addListener",
+        "signature": "(eventName: 'perissionCheck', listenerFunc: (data: { latitude: number; longitude: number; identifier: string; }) => void) => Promise<PluginListenerHandle>",
+        "parameters": [
+          {
+            "name": "eventName",
+            "docs": "",
+            "type": "'perissionCheck'"
+          },
+          {
+            "name": "listenerFunc",
+            "docs": "",
+            "type": "(data: { latitude: number; longitude: number; identifier: string; }) => void"
+          }
+        ],
+        "returns": "Promise<PluginListenerHandle>",
+        "tags": [],
+        "docs": "",
+        "complexTypes": [
+          "PluginListenerHandle"
+        ],
+        "slug": "addlistenerperissioncheck-"
       }
     ],
     "properties": []
   },
-  "interfaces": [],
+  "interfaces": [
+    {
+      "name": "PluginListenerHandle",
+      "slug": "pluginlistenerhandle",
+      "docs": "",
+      "tags": [],
+      "methods": [],
+      "properties": [
+        {
+          "name": "remove",
+          "tags": [],
+          "docs": "",
+          "complexTypes": [],
+          "type": "() => Promise<void>"
+        }
+      ]
+    }
+  ],
   "enums": [],
   "typeAliases": [],
   "pluginConfigs": []
