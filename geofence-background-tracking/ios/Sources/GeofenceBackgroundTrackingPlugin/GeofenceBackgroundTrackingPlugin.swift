@@ -21,60 +21,60 @@ public class GeofenceBackgroundTrackingPlugin: CAPPlugin, CLLocationManagerDeleg
     @available(iOS 14.0, *)
     @objc func initializeGeofences(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
-            self.locationManager = CLLocationManager()
-            self.locationManager.delegate = self
-            self.locationManager.requestAlwaysAuthorization()
-            
-            if let url = self.getConfig().getString("payloadURL") {
-                            self.payloadURL = url
-                            print("Payload URL retrieved from config: \(url)")
-                        }
+                self.locationManager = CLLocationManager()
+                self.locationManager.delegate = self
+                self.locationManager.requestAlwaysAuthorization()
+                
+                if let url = self.getConfig().getString("payloadURL") {
+                    self.payloadURL = url
+                    print("Payload URL retrieved from config: \(url)")
+                }
 
-            if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
-                self.addGeofence()
-                call.resolve([
-                    "status": "Geofencing initialized successfully"
-                ])
-            } else {
-                call.reject("Geofencing is not supported on this device.")
+                if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
+                    if let currentLocation = self.locationManager.location {
+                        let latitude = currentLocation.coordinate.latitude
+                        let longitude = currentLocation.coordinate.longitude
+                        self.addGeofence(latitude: latitude, longitude: longitude)
+                        call.resolve([
+                            "status": "Geofencing initialized successfully"
+                        ])
+                    } else {
+                        print("Unable to get current location.")
+                        call.reject("Unable to get current location.")
+                    }
+                } else {
+                    call.reject("Geofencing is not supported on this device.")
+                }
             }
-        }
     }
 
-    @available(iOS 14.0, *)
-    @objc func addGeofence() {
+    @objc func addGeofence(latitude: Double, longitude: Double) {
         guard CLLocationManager.locationServicesEnabled() else {
                 print("Location services are not enabled.")
                 return
             }
 
+        if #available(iOS 14.0, *) {
             let authorizationStatus = locationManager.authorizationStatus
             guard authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse else {
                 print("Location permissions not granted.")
                 return
             }
 
-            // Get the current location
-            if let currentLocation = locationManager.location {
-                let latitude = currentLocation.coordinate.latitude
-                let longitude = currentLocation.coordinate.longitude
-                let radius: CLLocationDistance = 200 // Set a fixed radius
+            let radius: CLLocationDistance = 100
+            let identifier = UIDevice.current.identifierForVendor?.uuidString ?? "UnknownDevice"
 
-                // Use the device ID as the identifier
-                let identifier = UIDevice.current.identifierForVendor?.uuidString ?? "UnknownDevice"
+            let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+            let region = CLCircularRegion(center: coordinate, radius: radius, identifier: identifier)
 
-                let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                let region = CLCircularRegion(center: coordinate, radius: radius, identifier: identifier)
+            region.notifyOnEntry = true
+            region.notifyOnExit = true
+            sendGeofenceEventToServer(latitude: latitude, longitude: longitude, identifier: identifier)
 
-                region.notifyOnEntry = true
-                region.notifyOnExit = true
+            locationManager.startMonitoring(for: region)
 
-                locationManager.startMonitoring(for: region)
-
-                print("Geofence added successfully with ID: \(identifier)")
-            } else {
-                print("Unable to get current location.")
-            }
+            print("New geofence added successfully with ID: \(identifier) at latitude: \(latitude), longitude: \(longitude)")
+        }
     }
     
     private func sendGeofenceEventToServer(latitude: Double, longitude: Double, identifier: String) {
@@ -102,14 +102,12 @@ public class GeofenceBackgroundTrackingPlugin: CAPPlugin, CLLocationManagerDeleg
             return
         }
         
-        // Make the API call
         let task = URLSession.shared.dataTask(with: request) { data, response, error in
             if let error = error {
                 print("Failed to send geofence event: \(error.localizedDescription)")
                 return
             }
             
-            // Handle the response
             if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
                 print("Geofence event successfully sent to server.")
             } else {
@@ -144,6 +142,8 @@ public class GeofenceBackgroundTrackingPlugin: CAPPlugin, CLLocationManagerDeleg
                 notifyListeners("onExit", data: ["identifier": circularRegion.identifier])
 
                 sendGeofenceEventToServer(latitude: latitude, longitude: longitude,identifier: circularRegion.identifier)
+            
+                addGeofence(latitude: latitude, longitude: longitude)
             }
     }
 
