@@ -182,7 +182,7 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
                     throw new RuntimeException(e);
                 }
                 try {
-                    jsonBody.put("id", 3);
+                    jsonBody.put("identifier", "ABC123");
                     jsonBody.put("location", locationPoints);
                 } catch (JSONException e) {
                     throw new RuntimeException(e);

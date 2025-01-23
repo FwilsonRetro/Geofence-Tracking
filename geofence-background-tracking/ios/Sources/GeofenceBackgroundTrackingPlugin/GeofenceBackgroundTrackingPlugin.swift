@@ -6,69 +6,88 @@ import CoreLocation
  * Please read the Capacitor iOS Plugin Development Guide
  * here: https://capacitorjs.com/docs/plugins/ios
  */
+
 @objc(GeofenceBackgroundTrackingPlugin)
-public class GeofenceBackgroundTrackingPlugin: CAPPlugin, CAPBridgedPlugin, CLLocationManagerDelegate {
+public class GeofenceBackgroundTrackingPlugin: CAPPlugin, CLLocationManagerDelegate {
     public let identifier = "GeofenceBackgroundTrackingPlugin"
     public let jsName = "GeofenceBackgroundTracking"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "echo", returnType: CAPPluginReturnPromise)
     ]
-    private let locationManager = CLLocationManager();
     
-    public override func load() {
-            super.load()
-            locationManager.delegate = self
-        }
-
-    @available(iOS 14.0, *)
+    private var locationManager: CLLocationManager!
+    
     @objc func initializeGeofences(_ call: CAPPluginCall) {
-            // Check the current location authorization status
-            let authorizationStatus = locationManager.authorizationStatus
-            
-            switch authorizationStatus {
-            case .notDetermined:
-                // Request permissions if not determined
-                locationManager.requestAlwaysAuthorization()
-                call.resolve(["status": "requested permissions"])
-            case .authorizedAlways:
-                // Permissions granted, set up geofences
-                setupGeofences()
-                call.resolve(["status": "geofences initialized"])
-            case .authorizedWhenInUse:
-                // Request "Always" permission if only "When In Use" is granted
-                locationManager.requestAlwaysAuthorization()
-                call.resolve(["status": "requested always permission"])
-            case .denied, .restricted:
-                // Permissions denied or restricted
-                call.reject("Location permissions are denied or restricted")
-            default:
-                call.reject("Unknown location authorization status")
-            }
-        }
-    
-        private func setupGeofences() {
-            // Add logic to create initial geofences
-            let exampleGeofence = CLCircularRegion(
-                center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-                radius: 100, // Radius in meters
-                identifier: "example_geofence"
-            )
-            exampleGeofence.notifyOnExit = true
-            locationManager.startMonitoring(for: exampleGeofence)
-        }
+        DispatchQueue.main.async {
+            self.locationManager = CLLocationManager()
+            self.locationManager.delegate = self  // Fix: Assign delegate correctly
+            self.locationManager.requestAlwaysAuthorization()
 
-        // Handle authorization changes
-    @available(iOS 14.0, *)
-    public func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-            switch manager.authorizationStatus {
-            case .authorizedAlways:
-                setupGeofences()
-                notifyListeners("permissionGranted", data: ["level": "always"])
-            case .denied:
-                notifyListeners("permissionDenied", data: nil)
-            default:
-                break
+            if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
+                self.addGeofence()
+                call.resolve([
+                    "status": "Geofencing initialized successfully"
+                ])
+            } else {
+                call.reject("Geofencing is not supported on this device.")
             }
         }
+    }
+
+    @available(iOS 14.0, *)
+    @objc func addGeofence() {
+        guard CLLocationManager.locationServicesEnabled() else {
+                print("Location services are not enabled.")
+                return
+            }
+
+            let authorizationStatus = locationManager.authorizationStatus
+            guard authorizationStatus == .authorizedAlways || authorizationStatus == .authorizedWhenInUse else {
+                print("Location permissions not granted.")
+                return
+            }
+
+            // Get the current location
+            if let currentLocation = locationManager.location {
+                let latitude = currentLocation.coordinate.latitude
+                let longitude = currentLocation.coordinate.longitude
+                let radius: CLLocationDistance = 200 // Set a fixed radius
+
+                // Use the device ID as the identifier
+                let identifier = UIDevice.current.identifierForVendor?.uuidString ?? "UnknownDevice"
+
+                let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                let region = CLCircularRegion(center: coordinate, radius: radius, identifier: identifier)
+
+                region.notifyOnEntry = true
+                region.notifyOnExit = true
+
+                locationManager.startMonitoring(for: region)
+
+                print("Geofence added successfully with ID: \(identifier)")
+            } else {
+                print("Unable to get current location.")
+            }
+    }
+
+    public func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
+        if let circularRegion = region as? CLCircularRegion {
+            notifyListeners("onEnter", data: [
+                "identifier": circularRegion.identifier
+            ])
+        }
+    }
+
+    public func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
+        if let circularRegion = region as? CLCircularRegion {
+            notifyListeners("onExit", data: [
+                "identifier": circularRegion.identifier
+            ])
+        }
+    }
+
+    public func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
+        print("Monitoring failed for region: \(String(describing: region?.identifier)), error: \(error.localizedDescription)")
+    }
     
 }
