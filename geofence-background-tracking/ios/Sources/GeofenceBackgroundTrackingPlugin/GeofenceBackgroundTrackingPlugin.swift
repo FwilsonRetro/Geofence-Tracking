@@ -16,13 +16,19 @@ public class GeofenceBackgroundTrackingPlugin: CAPPlugin, CLLocationManagerDeleg
     ]
     
     private var locationManager: CLLocationManager!
+    private var payloadURL: String?
     
     @available(iOS 14.0, *)
     @objc func initializeGeofences(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             self.locationManager = CLLocationManager()
-            self.locationManager.delegate = self  // Fix: Assign delegate correctly
+            self.locationManager.delegate = self
             self.locationManager.requestAlwaysAuthorization()
+            
+            if let url = self.getConfig().getString("payloadURL") {
+                            self.payloadURL = url
+                            print("Payload URL retrieved from config: \(url)")
+                        }
 
             if CLLocationManager.isMonitoringAvailable(for: CLCircularRegion.self) {
                 self.addGeofence()
@@ -70,23 +76,75 @@ public class GeofenceBackgroundTrackingPlugin: CAPPlugin, CLLocationManagerDeleg
                 print("Unable to get current location.")
             }
     }
+    
+    private func sendGeofenceEventToServer(latitude: Double, longitude: Double, identifier: String) {
+        guard let payloadURL = self.payloadURL, let url = URL(string: payloadURL) else {
+                    print("Payload URL is invalid or not configured.")
+                    return
+                }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+                "location": [
+                    "latitude": latitude,
+                    "longitude": longitude
+                ],
+                "identifier": identifier
+            ]
+        
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+        } catch {
+            print("Failed to serialize JSON: \(error.localizedDescription)")
+            return
+        }
+        
+        // Make the API call
+        let task = URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error = error {
+                print("Failed to send geofence event: \(error.localizedDescription)")
+                return
+            }
+            
+            // Handle the response
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                print("Geofence event successfully sent to server.")
+            } else {
+                print("Failed to send geofence event. HTTP status code: \((response as? HTTPURLResponse)?.statusCode ?? 0)")
+            }
+        }
+        
+        task.resume()
+    }
 
     //Entered Geofence
     public func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        if let circularRegion = region as? CLCircularRegion {
-            print("User entered geofence with ID: \(circularRegion.identifier)")
-            triggerNotification(title: "Geofence Entered", body: "You entered the geofence: \(circularRegion.identifier)")
-            notifyListeners("onEnter", data: ["identifier": circularRegion.identifier])
-        }
+        if let circularRegion = region as? CLCircularRegion, let currentLocation = locationManager.location {
+                let latitude = currentLocation.coordinate.latitude
+                let longitude = currentLocation.coordinate.longitude
+                print("User entered geofence with ID: \(circularRegion.identifier)")
+                triggerNotification(title: "Geofence Entered", body: "You entered the geofence: \(circularRegion.identifier)")
+                notifyListeners("onEnter", data: ["identifier": circularRegion.identifier])
+
+        
+                sendGeofenceEventToServer(latitude: latitude, longitude: longitude,identifier: circularRegion.identifier)
+            }
     }
 
     // Exit Geofence
     public func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
-        if let circularRegion = region as? CLCircularRegion {
-            print("User exited geofence with ID: \(circularRegion.identifier)")
-            triggerNotification(title: "Geofence Exited", body: "You exited the geofence: \(circularRegion.identifier)")
-            notifyListeners("onExit", data: ["identifier": circularRegion.identifier])
-        }
+        if let circularRegion = region as? CLCircularRegion, let currentLocation = locationManager.location {
+                let latitude = currentLocation.coordinate.latitude
+                let longitude = currentLocation.coordinate.longitude
+                print("User exited geofence with ID: \(circularRegion.identifier)")
+                triggerNotification(title: "Geofence Exited", body: "You exited the geofence: \(circularRegion.identifier)")
+                notifyListeners("onExit", data: ["identifier": circularRegion.identifier])
+
+                sendGeofenceEventToServer(latitude: latitude, longitude: longitude,identifier: circularRegion.identifier)
+            }
     }
 
     // No geofence trigger error handling

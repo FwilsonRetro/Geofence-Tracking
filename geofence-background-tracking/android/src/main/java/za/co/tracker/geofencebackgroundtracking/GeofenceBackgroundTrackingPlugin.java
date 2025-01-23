@@ -182,7 +182,9 @@ public class GeofenceBackgroundTrackingPlugin extends Plugin {
                     throw new RuntimeException(e);
                 }
                 try {
-                    jsonBody.put("identifier", "ABC123");
+                    String android_id = Settings.Secure.getString(getContext().getContentResolver(),
+                            Settings.Secure.ANDROID_ID);
+                    jsonBody.put("identifier", android_id);
                     jsonBody.put("location", locationPoints);
                 } catch (JSONException e) {
                     throw new RuntimeException(e);
