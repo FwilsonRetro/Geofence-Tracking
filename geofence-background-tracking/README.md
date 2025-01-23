@@ -15,6 +15,8 @@ npx cap sync
 
 * [`echo(...)`](#echo)
 * [`initializeGeofences()`](#initializegeofences)
+* [`addListener('onEnter' | 'onExit', ...)`](#addlisteneronenter--onexit-)
+* [Interfaces](#interfaces)
 
 </docgen-index>
 
@@ -43,5 +45,31 @@ initializeGeofences() => Promise<void>
 ```
 
 --------------------
+
+
+### addListener('onEnter' | 'onExit', ...)
+
+```typescript
+addListener(eventName: 'onEnter' | 'onExit', listenerFunc: (data: { identifier: string; }) => void) => Promise<PluginListenerHandle>
+```
+
+| Param              | Type                                                    |
+| ------------------ | ------------------------------------------------------- |
+| **`eventName`**    | <code>'onEnter' \| 'onExit'</code>                      |
+| **`listenerFunc`** | <code>(data: { identifier: string; }) =&gt; void</code> |
+
+**Returns:** <code>Promise&lt;<a href="#pluginlistenerhandle">PluginListenerHandle</a>&gt;</code>
+
+--------------------
+
+
+### Interfaces
+
+
+#### PluginListenerHandle
+
+| Prop         | Type                                      |
+| ------------ | ----------------------------------------- |
+| **`remove`** | <code>() =&gt; Promise&lt;void&gt;</code> |
 
 </docgen-api>

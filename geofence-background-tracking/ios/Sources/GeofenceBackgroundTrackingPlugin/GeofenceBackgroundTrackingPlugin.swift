@@ -17,6 +17,7 @@ public class GeofenceBackgroundTrackingPlugin: CAPPlugin, CLLocationManagerDeleg
     
     private var locationManager: CLLocationManager!
     
+    @available(iOS 14.0, *)
     @objc func initializeGeofences(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             self.locationManager = CLLocationManager()
@@ -70,24 +71,38 @@ public class GeofenceBackgroundTrackingPlugin: CAPPlugin, CLLocationManagerDeleg
             }
     }
 
+    //Entered Geofence
     public func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         if let circularRegion = region as? CLCircularRegion {
-            notifyListeners("onEnter", data: [
-                "identifier": circularRegion.identifier
-            ])
+            print("User entered geofence with ID: \(circularRegion.identifier)")
+            triggerNotification(title: "Geofence Entered", body: "You entered the geofence: \(circularRegion.identifier)")
+            notifyListeners("onEnter", data: ["identifier": circularRegion.identifier])
         }
     }
 
+    // Exit Geofence
     public func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
         if let circularRegion = region as? CLCircularRegion {
-            notifyListeners("onExit", data: [
-                "identifier": circularRegion.identifier
-            ])
+            print("User exited geofence with ID: \(circularRegion.identifier)")
+            triggerNotification(title: "Geofence Exited", body: "You exited the geofence: \(circularRegion.identifier)")
+            notifyListeners("onExit", data: ["identifier": circularRegion.identifier])
         }
     }
 
+    // No geofence trigger error handling
     public func locationManager(_ manager: CLLocationManager, monitoringDidFailFor region: CLRegion?, withError error: Error) {
-        print("Monitoring failed for region: \(String(describing: region?.identifier)), error: \(error.localizedDescription)")
+        print("Monitoring failed for region: \(region?.identifier ?? "Unknown") with error: \(error.localizedDescription)")
+    }
+
+    // Notification for debugging
+    private func triggerNotification(title: String, body: String) {
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = UNNotificationSound.default
+
+        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+        UNUserNotificationCenter.current().add(request, withCompletionHandler: nil)
     }
     
 }

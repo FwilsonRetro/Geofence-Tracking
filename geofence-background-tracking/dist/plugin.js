@@ -13,6 +13,14 @@ var capacitorGeofenceBackgroundTracking = (function (exports, core) {
         async initializeGeofences() {
             console.log('This is a web fallback, no geofencing support on web.');
         }
+        async addListener(eventName, _listenerFunc) {
+            console.warn(`Listening for '${eventName}' is not supported on the web.`);
+            return Promise.resolve({
+                remove: async () => {
+                    console.warn(`Removed listener for '${eventName}' on the web.`);
+                },
+            });
+        }
     }
     new GeofenceBackgroundTrackingWeb();
 
