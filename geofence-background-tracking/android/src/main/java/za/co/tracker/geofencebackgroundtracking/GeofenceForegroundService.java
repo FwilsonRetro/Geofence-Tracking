@@ -92,7 +92,7 @@ public class GeofenceForegroundService extends Service {
             serviceChannel = new NotificationChannel(
                     CHANNEL_ID,
                     "Location Service Channel",
-                    NotificationManager.IMPORTANCE_UNSPECIFIED
+                    NotificationManager.IMPORTANCE_NONE
             );
         }
 
