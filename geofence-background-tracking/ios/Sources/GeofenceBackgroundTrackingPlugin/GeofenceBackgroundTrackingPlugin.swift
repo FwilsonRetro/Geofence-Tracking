@@ -20,6 +20,7 @@ public class GeofenceBackgroundTrackingPlugin: CAPPlugin, CLLocationManagerDeleg
     
     @available(iOS 14.0, *)
     @objc func initializeGeofences(_ call: CAPPluginCall) {
+        print("Initialize hit")
         DispatchQueue.main.async {
                 self.locationManager = CLLocationManager()
                 self.locationManager.delegate = self
